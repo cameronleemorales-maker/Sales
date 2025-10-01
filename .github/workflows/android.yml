@@ -1,0 +1,62 @@
+name: Android CI (APK)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Change this if your app lives in a subfolder (e.g. "SalesMasterFull")
+env:
+  PROJECT_DIR: .
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ env.PROJECT_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # JDK 17 for AGP 8.x
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Set up Gradle (no cache to avoid noisy cache errors)
+      - name: Set up Gradle 8.x
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: true
+
+      # Android SDK + build-tools that match the project
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platforms & build-tools
+        run: |
+          sdkmanager --install "platforms;android-33" "platform-tools" "build-tools;33.0.1"
+          yes | sdkmanager --licenses
+
+      # Ensure the Gradle wrapper is executable
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # Build the debug APK
+      - name: Build Debug APK
+        env:
+          # Optional at build time; required at runtime. Leave here so code that reads the var compiles fine.
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: ./gradlew --no-daemon assembleDebug
+
+      # Upload APK artifact
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SalesMaster-debug-apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
