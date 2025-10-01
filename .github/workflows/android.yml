@@ -5,7 +5,6 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# Change this if your app lives in a subfolder (e.g. "SalesMasterFull")
 env:
   PROJECT_DIR: .
 
@@ -21,20 +20,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # JDK 17 for AGP 8.x
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # Set up Gradle (no cache to avoid noisy cache errors)
       - name: Set up Gradle 8.x
         uses: gradle/actions/setup-gradle@v3
         with:
           cache-disabled: true
 
-      # Android SDK + build-tools that match the project
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
@@ -43,18 +39,15 @@ jobs:
           sdkmanager --install "platforms;android-33" "platform-tools" "build-tools;33.0.1"
           yes | sdkmanager --licenses
 
-      # Ensure the Gradle wrapper is executable
+      # Only chmod if gradlew exists
       - name: Make gradlew executable
-        run: chmod +x ./gradlew
+        run: if [ -f gradlew ]; then chmod +x gradlew; fi
 
-      # Build the debug APK
       - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
         env:
-          # Optional at build time; required at runtime. Leave here so code that reads the var compiles fine.
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: ./gradlew --no-daemon assembleDebug
 
-      # Upload APK artifact
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
